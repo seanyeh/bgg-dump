@@ -9,11 +9,12 @@ URL_PATTERN = re.compile("/boardgame[^/]*/([^/]*)/.*")
 
 def _parse_game_id(url):
     match = URL_PATTERN.match(url)
-    if not match:
+    try:
+        return int(URL_PATTERN.match(url).groups()[0])
+    except:
         print("Bad url:", url)
         return
 
-    return URL_PATTERN.match(url).groups()[0]
 
 def dump_game_ids(filename):
     data = {}
