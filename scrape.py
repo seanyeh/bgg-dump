@@ -1,38 +1,47 @@
+#!/usr/bin/env python3
+
 import json
+import re
 import urllib
 from bs4 import BeautifulSoup
 
+URL_PATTERN = re.compile("/boardgame[^/]*/([^/]*)/.*")
 
-def add_urls(filename, new_urls):
-    try:
-        with open(filename, "r") as f:
-            urls = json.load(f)
-    except:
-        urls = []
+def _parse_game_id(url):
+    match = URL_PATTERN.match(url)
+    if not match:
+        print("Bad url:", url)
+        return
 
-    urls += new_urls
+    return URL_PATTERN.match(url).groups()[0]
+
+def dump_game_ids(filename):
+    data = {}
+    page = 1
+    has_next = True
+
+    while has_next:
+        print(f"Page: {page}")
+        url = f"https://www.boardgamegeek.com/browse/boardgame/page/{page}"
+        resp = urllib.request.urlopen(url)
+        soup = BeautifulSoup(resp, features="lxml")
+
+        rows = soup.select("#collectionitems #row_")
+        items = [r.select_one("td.collection_objectname a") for r in rows]
+
+        # Add { title: game_id } to data
+        for item in items:
+            title = item.text
+            game_id = _parse_game_id(item["href"])
+
+            if game_id:
+                data[title] = game_id
+
+        page += 1
+        has_next = soup.select_one("a[title='next page']")
 
     with open(filename, "w") as f:
-        json.dump(urls, f, indent=4, separators=(',', ': '))
+        json.dump(data, f)
 
-
-def get_bg_urls(filename, page=1):
-    print("get_bg_urls: page",page)
-
-    url = "https://www.boardgamegeek.com/browse/boardgame/page/{page}".format(page=page)
-    resp = urllib.request.urlopen(url)
-    soup = BeautifulSoup(resp, features="lxml")
-
-    rows = soup.select("#collectionitems #row_")
-
-    urls = [r.select_one("td.collection_objectname a")["href"] for r in rows]
-
-    add_urls(filename, urls)
-
-    has_next = soup.select_one("a[title='next page']")
-    if has_next != None:
-        get_bg_urls(filename, page + 1)
-    else:
-        print("Done!")
-
-
+if __name__ == "__main__":
+    dump_game_ids("game_ids.json")
