@@ -35,7 +35,7 @@ def dump_game_ids(filename):
             title = item.text
             game_id = _parse_game_id(item["href"])
 
-            if game_id:
+            if game_id and title not in data:
                 data[title] = game_id
 
         page += 1
